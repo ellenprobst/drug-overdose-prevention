@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+    <title>Haven - Safety & Support</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+      tailwind.config = {
+        theme: {
+          extend: {
+            colors: {
+              haven: {
+                50: '#f4f9f9',
+                100: '#ddeff0',
+                200: '#bbe0e2',
+                300: '#8ec7cb',
+                400: '#5fa6ad',
+                500: '#428a92',
+                600: '#33707a',
+                700: '#2a5b64',
+                800: '#264c54',
+                900: '#224047',
+              },
+              warm: {
+                50: '#fdfbf7',
+                100: '#fbf5eb',
+                200: '#f5ead6',
+              }
+            },
+            animation: {
+              'pulse-slow': 'pulse 4s cubic-bezier(0.4, 0, 0.6, 1) infinite',
+              'breathe': 'breathe 4s ease-in-out infinite',
+            },
+            keyframes: {
+              breathe: {
+                '0%, 100%': { transform: 'scale(0.92)', opacity: '0.4' },
+                '50%': { transform: 'scale(1.08)', opacity: '0.2' },
+              }
+            },
+            fontFamily: {
+              sans: ['system-ui', '-apple-system', 'BlinkMacSystemFont', 'Segoe UI', 'Roboto', 'Helvetica Neue', 'Arial', 'sans-serif'],
+            }
+          },
+        },
+      }
+    </script>
+    <style>
+      body {
+        background-color: #fdfbf7; /* warm-50 */
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+        color: #224047;
+      }
+      /* Disable pull-to-refresh on mobile */
+      body {
+        overscroll-behavior-y: contain;
+      }
+    </style>
+  <script type="importmap">
+{
+  "imports": {
+    "react-dom/": "https://aistudiocdn.com/react-dom@^19.2.0/",
+    "@google/genai": "https://aistudiocdn.com/@google/genai@^1.30.0",
+    "react": "https://aistudiocdn.com/react@^19.2.0",
+    "react/": "https://aistudiocdn.com/react@^19.2.0/",
+    "lucide-react": "https://aistudiocdn.com/lucide-react@^0.554.0"
+  }
+}
+</script>
+</head>
+  <body>
+    <div id="root"></div>
+  </body>
+</html>

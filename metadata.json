@@ -1,0 +1,7 @@
+{
+  "name": "Haven",
+  "description": "A trauma-informed, privacy-first safety companion for harm reduction and mental health support.",
+  "requestFramePermissions": [
+    "geolocation"
+  ]
+}
