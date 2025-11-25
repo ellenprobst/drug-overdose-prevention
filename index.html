@@ -31,11 +31,17 @@
             animation: {
               'pulse-slow': 'pulse 4s cubic-bezier(0.4, 0, 0.6, 1) infinite',
               'breathe': 'breathe 4s ease-in-out infinite',
+              'attention': 'attention 3s ease-in-out infinite',
             },
             keyframes: {
               breathe: {
                 '0%, 100%': { transform: 'scale(0.92)', opacity: '0.4' },
                 '50%': { transform: 'scale(1.08)', opacity: '0.2' },
+              },
+              attention: {
+                '0%, 80%': { transform: 'scale(1)', filter: 'brightness(100%)' },
+                '90%': { transform: 'scale(1.25)', filter: 'brightness(110%)' },
+                '100%': { transform: 'scale(1)', filter: 'brightness(100%)' },
               }
             },
             fontFamily: {

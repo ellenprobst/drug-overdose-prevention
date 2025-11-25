@@ -17,7 +17,7 @@ export const BottomNavigation: React.FC<BottomNavigationProps> = ({ currentView,
   ];
 
   return (
-    <nav className="fixed bottom-0 left-0 right-0 bg-white/90 backdrop-blur-md border-t border-haven-100 pb-safe pt-2 px-2 flex justify-between items-center z-50 h-[84px] shadow-[0_-4px_20px_rgba(0,0,0,0.02)]">
+    <nav className="absolute bottom-0 left-0 right-0 bg-white/90 backdrop-blur-md border-t border-haven-100 pb-6 pt-2 px-2 flex justify-between items-center z-50 h-[84px] shadow-[0_-4px_20px_rgba(0,0,0,0.02)] rounded-b-[2.5rem]">
       {navItems.map((item) => {
         const isActive = currentView === item.view;
         return (

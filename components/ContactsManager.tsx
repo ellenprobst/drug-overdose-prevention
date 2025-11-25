@@ -80,13 +80,7 @@ export const ContactsManager: React.FC<ContactsManagerProps> = ({ onNavigate }) 
           <h1 className="text-2xl font-light text-haven-800">Trusted Contacts</h1>
           <p className="text-sm text-haven-500">Notified only if you need help</p>
         </div>
-        <button 
-            onClick={() => setShowSettings(true)}
-            className="flex flex-col items-center text-haven-600 p-2 rounded-lg hover:bg-haven-50"
-        >
-            <ShieldCheck size={24} />
-            <span className="text-[10px] font-bold uppercase tracking-wide mt-1">Plan</span>
-        </button>
+       
       </div>
 
       <div className="flex-1 overflow-y-auto px-6 pb-24 pt-6">

@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { SessionState, EscalationAction, EscalationPlan, EmergencyContact, AppView, SessionStatus, SessionRecord } from '../types';
 import { Button } from './Button';
-import { Loader2, AlertTriangle, MapPin, MapPinOff, CheckCircle, MessageSquare, Phone, Ambulance, ArrowLeft, ArrowRight, X, UserPlus, Grid3X3, RefreshCw } from 'lucide-react';
+import { Loader2, AlertTriangle, MapPin, MapPinOff, CheckCircle, Grid3X3 } from 'lucide-react';
 
 interface SafetySessionProps {
   onExit: () => void;
@@ -14,14 +14,24 @@ const DEMO_LOCATION = "8 Ave SW, Calgary, AB T2P 1E5";
 const DEMO_W3W = "///puzzle.glorious.flick";
 
 export const SafetySession: React.FC<SafetySessionProps> = ({ onExit, onNavigate }) => {
-  const [sessionState, setSessionState] = useState<SessionState>(SessionState.IDLE);
-  const [durationMinutes, setDurationMinutes] = useState<number>(20);
-  const [timeLeft, setTimeLeft] = useState<number>(0);
+  // Initialize duration from storage or default to 20
+  const [durationMinutes, setDurationMinutes] = useState<number>(() => {
+    const saved = localStorage.getItem('haven_default_duration');
+    return saved ? parseFloat(saved) : 20;
+  });
+
+  // Start in RUNNING state immediately
+  const [sessionState, setSessionState] = useState<SessionState>(SessionState.RUNNING);
+  
+  // Initialize timeLeft based on duration
+  const [timeLeft, setTimeLeft] = useState<number>(() => {
+    const saved = localStorage.getItem('haven_default_duration');
+    const mins = saved ? parseFloat(saved) : 20;
+    return Math.round(mins * 60);
+  });
+
   const [graceTimeLeft, setGraceTimeLeft] = useState<number>(0);
   const [isProcessing, setIsProcessing] = useState(false);
-  
-  // Setup Flow State
-  const [setupStep, setSetupStep] = useState<1 | 2>(1);
   
   // Customization State
   const [customMessage, setCustomMessage] = useState(DEFAULT_MESSAGE);
@@ -31,65 +41,13 @@ export const SafetySession: React.FC<SafetySessionProps> = ({ onExit, onNavigate
   
   // Emergency Logic State
   const [plan, setPlan] = useState<EscalationPlan | null>(null);
-  const [allContacts, setAllContacts] = useState<EmergencyContact[]>([]);
   const [recipients, setRecipients] = useState<EmergencyContact[]>([]);
-  const [hasAnyContacts, setHasAnyContacts] = useState(false);
   
   // History Tracking
-  const startTimeRef = useRef<number | null>(null);
+  const startTimeRef = useRef<number | null>(Date.now());
 
   // Audio context for generating beeps without external files
   const audioContextRef = useRef<any>(null);
-
-  useEffect(() => {
-      // Load plan, contacts, and custom message initially
-      const savedPlan = localStorage.getItem('haven_escalation_plan');
-      const savedContacts = localStorage.getItem('haven_contacts');
-      const savedMessage = localStorage.getItem('haven_custom_message');
-      const savedInstruction = localStorage.getItem('haven_contact_instruction');
-      
-      if (savedPlan) setPlan(JSON.parse(savedPlan));
-      if (savedMessage) setCustomMessage(savedMessage);
-      if (savedInstruction) setContactInstruction(savedInstruction);
-      
-      if (savedContacts) {
-          try {
-              const contactsList: EmergencyContact[] = JSON.parse(savedContacts);
-              setAllContacts(contactsList);
-              setHasAnyContacts(contactsList.length > 0);
-              // Auto-select all contacts by default for the session
-              // User can remove them individually if they want for this specific session
-              setRecipients(contactsList);
-          } catch(e) {
-              console.error("Error parsing contacts", e);
-              setHasAnyContacts(false);
-              setAllContacts([]);
-              setRecipients([]);
-          }
-      } else {
-          setHasAnyContacts(false);
-          setAllContacts([]);
-          setRecipients([]);
-      }
-  }, []);
-
-  // Save custom message preference
-  useEffect(() => {
-    localStorage.setItem('haven_custom_message', customMessage);
-  }, [customMessage]);
-
-  useEffect(() => {
-    localStorage.setItem('haven_contact_instruction', contactInstruction);
-  }, [contactInstruction]);
-
-  // Sync Location Privacy with Instruction
-  useEffect(() => {
-    if (contactInstruction === "Send help immediately") {
-        setIncludeLocation(true);
-    } else {
-        setIncludeLocation(false);
-    }
-  }, [contactInstruction]);
 
   const playSound = useCallback((type: 'gentle' | 'alert') => {
     if (!audioContextRef.current) {
@@ -123,6 +81,45 @@ export const SafetySession: React.FC<SafetySessionProps> = ({ onExit, onNavigate
     }
   }, []);
 
+  // Play start sound on mount
+  useEffect(() => {
+    playSound('gentle');
+  }, [playSound]);
+
+  useEffect(() => {
+      // Load plan, contacts, and custom message initially
+      const savedPlan = localStorage.getItem('haven_escalation_plan');
+      const savedContacts = localStorage.getItem('haven_contacts');
+      const savedMessage = localStorage.getItem('haven_custom_message');
+      const savedInstruction = localStorage.getItem('haven_contact_instruction');
+      
+      if (savedPlan) setPlan(JSON.parse(savedPlan));
+      if (savedMessage) setCustomMessage(savedMessage);
+      if (savedInstruction) setContactInstruction(savedInstruction);
+      
+      if (savedContacts) {
+          try {
+              const contactsList: EmergencyContact[] = JSON.parse(savedContacts);
+              // Auto-select all contacts by default for the session
+              setRecipients(contactsList);
+          } catch(e) {
+              console.error("Error parsing contacts", e);
+              setRecipients([]);
+          }
+      } else {
+          setRecipients([]);
+      }
+  }, []);
+
+  // Sync Location Privacy with Instruction
+  useEffect(() => {
+    if (contactInstruction === "Send help immediately") {
+        setIncludeLocation(true);
+    } else {
+        setIncludeLocation(false);
+    }
+  }, [contactInstruction]);
+
   const saveSessionHistory = useCallback((status: SessionStatus) => {
     const now = Date.now();
     const start = startTimeRef.current || now;
@@ -148,18 +145,6 @@ export const SafetySession: React.FC<SafetySessionProps> = ({ onExit, onNavigate
     historyList.unshift(newRecord);
     localStorage.setItem('haven_session_history', JSON.stringify(historyList));
   }, [substance]);
-
-  const removeRecipient = (id: string) => {
-    setRecipients(prev => prev.filter(c => c.id !== id));
-  };
-
-  const startSession = (minutes: number) => {
-    setDurationMinutes(minutes);
-    setTimeLeft(Math.round(minutes * 60)); // Ensure integer seconds
-    setSessionState(SessionState.RUNNING);
-    startTimeRef.current = Date.now();
-    playSound('gentle');
-  };
 
   const confirmOkay = () => {
     setTimeLeft(Math.round(durationMinutes * 60)); // Reset to original duration
@@ -283,225 +268,6 @@ export const SafetySession: React.FC<SafetySessionProps> = ({ onExit, onNavigate
     const s = Math.floor(seconds % 60);
     return `${m}:${s.toString().padStart(2, '0')}`;
   };
-
-  // Render Selection Screen (Two Steps)
-  if (sessionState === SessionState.IDLE) {
-    if (setupStep === 1) {
-        // Step 1: Configuration
-        return (
-            <div className="flex flex-col h-full p-6 animate-fade-in overflow-y-auto w-full max-w-md mx-auto">
-                <div className="flex items-center justify-between mb-6 mt-2">
-                    <Button variant="ghost" onClick={onExit} className="p-2 -ml-2 text-haven-400">
-                        <ArrowLeft size={24} />
-                    </Button>
-                    <div className="text-[10px] font-bold uppercase tracking-widest text-haven-300 bg-haven-50 px-2 py-1 rounded">Step 1 of 2</div>
-                    <div className="w-10"></div>
-                </div>
-
-                <div className="text-center space-y-2 mb-8">
-                    <h2 className="text-3xl font-light text-haven-800 tracking-wide">Safety Plan</h2>
-                    <p className="text-haven-500 font-light text-sm">
-                        Setup your emergency response details.
-                    </p>
-                </div>
-
-                {/* Message Customization */}
-                <div className="bg-white p-5 rounded-2xl shadow-sm border border-haven-100 mb-8 space-y-5">
-                
-                {/* Message Input */}
-                <div>
-                    <div className="flex items-center gap-2 mb-3 text-haven-600">
-                        <MessageSquare size={16} />
-                        <label className="text-xs uppercase tracking-wider font-bold">Emergency Message</label>
-                    </div>
-                    
-                    <textarea
-                        value={customMessage}
-                        onChange={(e) => setCustomMessage(e.target.value)}
-                        className="w-full bg-haven-50 border-0 rounded-xl p-3 text-sm text-haven-800 placeholder-haven-400 focus:ring-2 focus:ring-haven-200 focus:outline-none resize-none mb-3"
-                        rows={2}
-                        placeholder="Enter the message sent to your contacts..."
-                    />
-
-                    <input
-                        type="text"
-                        value={substance}
-                        onChange={(e) => setSubstance(e.target.value)}
-                        className="w-full bg-haven-50 border-0 rounded-xl p-3 text-sm text-haven-800 placeholder-haven-400 focus:ring-2 focus:ring-haven-200 focus:outline-none"
-                        placeholder="Substance used (Optional)"
-                    />
-                </div>
-
-                <div className="h-px bg-haven-50 w-full"></div>
-
-                {/* Contact Instructions */}
-                <div>
-                    <label className="text-xs uppercase tracking-wider font-bold text-haven-600 mb-3 block">Instruction</label>
-                    <div className="grid grid-cols-2 gap-3 mb-4">
-                        <button 
-                            onClick={() => setContactInstruction("Call me first")}
-                            className={`p-3 rounded-xl border flex flex-col items-center justify-center gap-2 transition-all ${contactInstruction === "Call me first" ? 'bg-haven-500 border-haven-500 text-white shadow-md' : 'bg-white border-haven-100 text-haven-400 hover:bg-haven-50'}`}
-                        >
-                            <Phone size={18} />
-                            <span className="text-xs font-medium">Call Me First</span>
-                        </button>
-                        <button 
-                            onClick={() => setContactInstruction("Send help immediately")}
-                            className={`p-3 rounded-xl border flex flex-col items-center justify-center gap-2 transition-all ${contactInstruction === "Send help immediately" ? 'bg-rose-500 border-rose-500 text-white shadow-md' : 'bg-white border-haven-100 text-haven-400 hover:bg-haven-50'}`}
-                        >
-                            <Ambulance size={18} />
-                            <span className="text-xs font-medium">Send Help</span>
-                        </button>
-                    </div>
-                    
-                    {/* Location Privacy Status Bar */}
-                    <div className={`rounded-xl px-4 py-3 flex items-start justify-between gap-2 transition-colors ${includeLocation ? 'bg-orange-50 border border-orange-100' : 'bg-haven-50 border border-haven-100'}`}>
-                        <div className="flex items-center gap-2 flex-1 min-w-0">
-                            {includeLocation ? (
-                                <MapPin size={16} className="text-orange-500 shrink-0 mt-0.5" />
-                            ) : (
-                                <MapPinOff size={16} className="text-haven-400 shrink-0 mt-0.5" />
-                            )}
-                            <div className="flex flex-col gap-0.5 min-w-0">
-                                <div className={`text-xs font-bold uppercase tracking-wider leading-relaxed ${includeLocation ? 'text-orange-600' : 'text-haven-600'}`}>
-                                    {includeLocation ? DEMO_LOCATION : 'Location: Unknown'}
-                                </div>
-                                {includeLocation && (
-                                    <div className="flex items-center gap-1 text-[10px] text-orange-400 font-medium">
-                                        <Grid3X3 size={10} />
-                                        <span>{DEMO_W3W}</span>
-                                    </div>
-                                )}
-                            </div>
-                        </div>
-                        <div className={`text-[10px] font-medium shrink-0 pt-0.5 ${includeLocation ? 'text-orange-400' : 'text-haven-400'}`}>
-                            {includeLocation ? 'Shared with Alert' : 'Not Shared'}
-                        </div>
-                    </div>
-                    
-                    {/* Recipients Section */}
-                     <div className="mt-5 pt-4 border-t border-haven-50">
-                        <label className="text-xs uppercase tracking-wider font-bold text-haven-600 mb-3 block">Who to notify</label>
-                        {recipients.length === 0 ? (
-                            hasAnyContacts ? (
-                                <div className="space-y-3">
-                                    <div className="p-3 bg-red-50 border border-red-100 rounded-xl text-red-500 text-sm flex items-center gap-2">
-                                        <AlertTriangle size={16} />
-                                        <span className="text-xs font-medium">No contacts selected</span>
-                                    </div>
-                                    <Button 
-                                        variant="secondary" 
-                                        className="w-full text-xs h-10 border-haven-200 text-haven-600"
-                                        onClick={() => setRecipients(allContacts)}
-                                    >
-                                        <RefreshCw size={14} className="mr-1" />
-                                        Restore All Contacts
-                                    </Button>
-                                </div>
-                            ) : (
-                                <div className="space-y-3">
-                                    <div className="p-3 bg-red-50 border border-red-100 rounded-xl text-red-500 text-sm flex items-center gap-2">
-                                        <AlertTriangle size={16} />
-                                        <span className="text-xs font-medium">No contacts found</span>
-                                    </div>
-                                    <Button 
-                                        variant="secondary" 
-                                        className="w-full text-xs h-10 border-haven-200 text-haven-600"
-                                        onClick={() => onNavigate && onNavigate(AppView.CONTACTS)}
-                                    >
-                                        <UserPlus size={14} className="mr-1" />
-                                        Add Trusted Contact
-                                    </Button>
-                                </div>
-                            )
-                        ) : (
-                            <div className="flex flex-wrap gap-2">
-                                {recipients.map(contact => (
-                                    <div key={contact.id} className="bg-white border border-haven-200 rounded-full pl-3 pr-1 py-1.5 flex items-center gap-2 shadow-sm">
-                                        <span className="text-xs font-medium text-haven-700 max-w-[120px] truncate">{contact.name}</span>
-                                        <button 
-                                            onClick={() => removeRecipient(contact.id)}
-                                            className="p-0.5 hover:bg-haven-50 rounded-full text-haven-400 hover:text-rose-500 transition-colors"
-                                            title="Remove contact from this session"
-                                        >
-                                            <X size={14} />
-                                        </button>
-                                    </div>
-                                ))}
-                            </div>
-                        )}
-                    </div>
-                </div>
-                </div>
-
-                <div className="mt-auto pb-8">
-                    <Button 
-                        fullWidth 
-                        onClick={() => setSetupStep(2)} 
-                        className="h-14 text-lg"
-                        disabled={recipients.length === 0}
-                    >
-                        Next: Set Timer
-                        <ArrowRight size={20} />
-                    </Button>
-                </div>
-            </div>
-        );
-    } else {
-        // Step 2: Timer Selection
-        return (
-             <div className="flex flex-col h-full p-6 animate-fade-in overflow-y-auto w-full max-w-md mx-auto">
-                <div className="flex items-center justify-between mb-6 mt-2">
-                    <Button variant="ghost" onClick={() => setSetupStep(1)} className="p-2 -ml-2 text-haven-600">
-                        <ArrowLeft size={24} />
-                    </Button>
-                    <div className="text-[10px] font-bold uppercase tracking-widest text-haven-300 bg-haven-50 px-2 py-1 rounded">Step 2 of 2</div>
-                    <div className="w-10"></div>
-                </div>
-
-                <div className="text-center space-y-2 mt-4 mb-12">
-                    <h2 className="text-3xl font-light text-haven-800 tracking-wide">Set Timer</h2>
-                    <p className="text-haven-500 font-light text-sm">
-                        We'll check on you when the time is up.
-                    </p>
-                </div>
-
-                <div className="grid grid-cols-2 gap-4 mb-8">
-                {/* Dev Option: 5 Seconds */}
-                <button
-                    onClick={() => startSession(5 / 60)}
-                    className="flex flex-col items-center justify-center py-6 rounded-2xl bg-white text-haven-600 hover:bg-haven-50 transition-all border border-transparent hover:border-haven-100 shadow-sm"
-                >
-                    <span className="text-4xl font-light mb-1">5</span>
-                    <span className="text-sm uppercase tracking-widest opacity-60">sec</span>
-                </button>
-
-                {/* Standard Options */}
-                {[10, 20, 30].map((min) => (
-                    <button
-                    key={min}
-                    onClick={() => startSession(min)}
-                    className="flex flex-col items-center justify-center py-6 rounded-2xl bg-white text-haven-600 hover:bg-haven-50 transition-all border border-transparent hover:border-haven-100 shadow-sm"
-                    >
-                    <span className="text-4xl font-light mb-1">{min}</span>
-                    <span className="text-sm uppercase tracking-widest opacity-60">min</span>
-                    </button>
-                ))}
-                </div>
-
-                <div className="mt-auto flex justify-center pb-8">
-                    <Button 
-                    variant="ghost"
-                    onClick={onExit} 
-                    className="text-haven-400 hover:text-haven-600 font-medium tracking-wide"
-                    >
-                    Cancel Session
-                    </Button>
-                </div>
-            </div>
-        );
-    }
-  }
 
   // Render Confirmation Screen (After Emergency Triggered)
   if (sessionState === SessionState.EMERGENCY) {
